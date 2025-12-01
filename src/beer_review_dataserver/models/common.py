@@ -1,6 +1,7 @@
-from functools import partial
 from datetime import datetime, timezone
-from sqlmodel import Field, TIMESTAMP, Column, text
+from functools import partial
+
+from sqlmodel import TIMESTAMP, Column, Field, text
 
 now_func = partial(datetime.now, timezone.utc)
 

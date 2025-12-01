@@ -1,13 +1,13 @@
+import uuid
+from copy import deepcopy
+from datetime import datetime, timezone
+from functools import partial
 from typing import TYPE_CHECKING
 
-from copy import deepcopy
-import uuid
-from datetime import datetime, timezone
-from sqlmodel import Field, SQLModel, Relationship
-from functools import partial
 from sqlalchemy import CheckConstraint
+from sqlmodel import Field, Relationship, SQLModel
 
-from .common import LAST_UPDATED, DATE_CREATED
+from .common import DATE_CREATED, LAST_UPDATED
 
 if TYPE_CHECKING:
     from .beers import Beers, BeersPublic

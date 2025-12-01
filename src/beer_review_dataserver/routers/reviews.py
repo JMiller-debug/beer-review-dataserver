@@ -1,22 +1,23 @@
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query
+from fastapi.exceptions import HTTPException
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 
-from app.dependencies import SessionDep
+from beer_review_dataserver.dependencies import SessionDep
 
 # The following import is necessary to rebuild the model
 # This was the thought to be the best way to avoid circular import issues
-from app.models.beers import Beers, BeersPublic  # noqa: F401
-from app.models.reviews import (
+from beer_review_dataserver.models.beers import Beers, BeersPublic  # noqa: F401
+from beer_review_dataserver.models.reviews import (
     Reviews,
     ReviewsBase,
     ReviewsPublic,
     ReviewsPublicWithBeers,
     ReviewsUpdate,
 )
-from fastapi.exceptions import HTTPException
+
 from .common import BEER_NOT_FOUND, REVIEW_NOT_FOUND, oderby_function, patch_record
 
 ReviewsPublicWithBeers.model_rebuild()
@@ -32,12 +33,16 @@ router = APIRouter(
 
 
 @router.post("/", response_model=ReviewsPublic)
-async def create_review(review: ReviewsBase, session: SessionDep) -> ReviewsPublic:
+async def create_review(review: ReviewsBase, session: SessionDep):
+    # First check to see if the beer exists in the database
     find_beer = select(Beers).where(Beers.name == review.beer_name)
     result = await session.exec(find_beer)
     beer = result.first()
+    # Raise a BEER NOT FOUND exception
     if not beer:
         raise BEER_NOT_FOUND
+    # Next check to see if the user as already reviewed this beer and prevent
+    # them from creating duplicate reviews
     check_duplicate_reviews = select(Reviews).where(Reviews.username == review.username)
     result = await session.exec(check_duplicate_reviews)
     duplicate_review = result.first()
@@ -80,6 +85,8 @@ async def read_reviews(
     orderby: str | None = None,
     order: Literal["asc", "desc"] = "asc",
 ):
+    # Note selectinload is used to get the associated content from the other
+    # tables. This provides us with the beer that the review is associated with
     stmt = (
         select(Reviews).offset(offset).limit(limit).options(selectinload(Reviews.beer))
     )

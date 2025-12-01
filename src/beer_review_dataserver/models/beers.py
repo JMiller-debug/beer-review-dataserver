@@ -3,10 +3,13 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from functools import partial
 from typing import TYPE_CHECKING, Optional
+
 from sqlmodel import Field, Relationship, SQLModel
 
 from .common import DATE_CREATED, LAST_UPDATED
 
+# Required for type checking when developing but doesn't break
+# when running due to circular imports.
 if TYPE_CHECKING:
     from .breweries import Breweries, BreweriesPublic
     from .reviews import Reviews, ReviewsPublic

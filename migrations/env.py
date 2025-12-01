@@ -6,9 +6,9 @@ from sqlmodel import SQLModel
 
 from alembic import context
 
-from src.app.models.beers import Beers
-from src.app.models.breweries import Breweries
-from src.app.models.reviews import Reviews
+from beer_review_dataserver.models.beers import Beers
+from beer_review_dataserver.models.breweries import Breweries
+from beer_review_dataserver.models.reviews import Reviews
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

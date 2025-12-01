@@ -4,8 +4,8 @@ from fastapi import APIRouter, Query
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 
-from app.dependencies import SessionDep
-from app.models.beers import (
+from beer_review_dataserver.dependencies import SessionDep
+from beer_review_dataserver.models.beers import (
     Beers,
     BeersBase,
     BeersPublic,
@@ -15,10 +15,13 @@ from app.models.beers import (
 
 # The following import is necessary to rebuild the model
 # This was the thought to be the best way to avoid circular import issues
-from app.models.breweries import Breweries, BreweriesPublic  # noqa: F401
-from app.models.reviews import Reviews, ReviewsPublic  # noqa: F401
+from beer_review_dataserver.models.breweries import (  # noqa: F401
+    Breweries,
+    BreweriesPublic,
+)
+from beer_review_dataserver.models.reviews import Reviews, ReviewsPublic  # noqa: F401
 
-from .common import patch_record, BEER_NOT_FOUND, BREWERY_NOT_FOUND, oderby_function
+from .common import BEER_NOT_FOUND, BREWERY_NOT_FOUND, oderby_function, patch_record
 
 BeersPublicWithRelations.model_rebuild()
 
@@ -67,6 +70,9 @@ async def read_beers(
     orderby: str | None = None,
     order: Literal["asc", "desc"] = "asc",
 ):
+    # Note selectinload is used to get the associated content from the other
+    # tables. This provides us with a company from just the fk of company name
+    # and also a list of reviews associated with our beer
     stmt = (
         select(Beers)
         .offset(offset)
@@ -88,15 +94,14 @@ async def read_beers(
 async def list_beers(
     session: SessionDep,
     offset: int = 0,
-    # limit: Annotated[int, Query(le=100)] = 100,
+    limit: Annotated[int, Query(le=100)] = 100,
     orderby: str | None = None,
     order: Literal["asc", "desc"] = "asc",
 ):
-    stmt = select(Beers.name)
-    # oderby_function(stmt, Beers, orderby, order)
+    stmt = select(Beers.name).offset(offset).limit(limit)
+    oderby_function(stmt, Beers, orderby, order)
 
     beers = (await session.exec(stmt)).all()
-    print(beers)
     return beers
 
 

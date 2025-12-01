@@ -4,12 +4,12 @@ from fastapi import APIRouter, Query
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 
-from app.dependencies import SessionDep
+from beer_review_dataserver.dependencies import SessionDep
 
 # The following import is necessary to rebuild the model
 # This was the thought to be the best way to avoid circular import issues
-from app.models.beers import BeersPublic  # noqa: F401
-from app.models.breweries import (
+from beer_review_dataserver.models.beers import BeersPublic  # noqa: F401
+from beer_review_dataserver.models.breweries import (
     Breweries,
     BreweriesBase,
     BreweriesPublic,
@@ -73,6 +73,9 @@ async def read_breweries(
     orderby: str | None = None,
     order: Literal["asc", "desc"] = "asc",
 ):
+    # Note selectinload is used to get the associated content from the other
+    # tables. This provides us with a list of associated beers based on the fk
+    # relationship
     stmt = (
         select(Breweries)
         .offset(offset)

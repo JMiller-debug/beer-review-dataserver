@@ -1,0 +1,37 @@
+[project]
+name = "beer_review_dataserver"
+version = "0.0.1"
+authors = [
+  { name="Jake Miller", email="jake.miller@jaikom.com" },
+]
+description = "A dataserver for the beer review website"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "alembic>=1.16.5",
+    "asyncpg>=0.31.0",
+    "fastapi[standard]>=0.123.0",
+    "pydantic-settings>=2.11.0",
+    "sqlmodel>=0.0.27",
+]
+
+[project.scripts]
+beer_dataserver = "beer_review_dataserver.main:main"
+[project.urls]
+Homepage = "https://github.com/JMiller-debug/beer-review-dataserver"
+Issues = "https://github.com/JMiller-debug/beer-review-dataserver/issues"
+
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.7",
+]
+
+[tool.ruff]
+exclude = [
+    "migrations"
+]

@@ -7,12 +7,15 @@ from sqlalchemy.orm import sessionmaker
 from sqlmodel import Session
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.models.beers import Beers
+from beer_review_dataserver.models.beers import Beers
 
-postgres_url = "postgresql+asyncpg://postgres:postgres@localhost:5432/beer_review"
-engine = create_async_engine(postgres_url)
+from .config import get_settings
 
-async_engine = create_async_engine(postgres_url, echo=True, future=True)
+settings = get_settings()
+
+engine = create_async_engine(settings.postgres_uri)
+
+async_engine = create_async_engine(settings.postgres_uri, echo=True, future=True)
 
 async_session = sessionmaker(
     bind=async_engine, class_=AsyncSession, expire_on_commit=False
