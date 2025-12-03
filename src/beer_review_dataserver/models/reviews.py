@@ -16,8 +16,8 @@ now_func = partial(datetime.now, timezone.utc)
 
 
 class ReviewsBase(SQLModel):
-    username: str = Field(index=True, unique=True)
-    score: int = Field(index=True)
+    username: str = Field(index=True, unique=False)
+    score: float = Field(index=True)
     comment: str | None = Field(index=True, default=None)
     beer_name: str = Field(index=True, foreign_key="beers.name")
     __table_args__ = (
@@ -50,4 +50,4 @@ class ReviewsUpdate(ReviewsBase):
 
 
 class ReviewsPublicWithBeers(ReviewsPublic):
-    beers: "BeersPublic"
+    beer: "BeersPublic"

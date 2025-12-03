@@ -20,7 +20,6 @@ now_func = partial(datetime.now, timezone.utc)
 
 class BeersBase(SQLModel):
     name: str = Field(index=True, unique=True)
-    score: int | None = Field(default=None, index=True)
     company: str = Field(index=True, foreign_key="breweries.name")
 
 
@@ -28,6 +27,7 @@ class Beers(BeersBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     last_updated: datetime = deepcopy(LAST_UPDATED)
     date_created: datetime = deepcopy(DATE_CREATED)
+    score: float = Field(default=0, index=True)
 
     # A good example of resolving foreign key ambiguity
     # https://github.com/fastapi/sqlmodel/discussions/1038
@@ -49,6 +49,7 @@ class Beers(BeersBase, table=True):
 
 class BeersPublic(BeersBase):
     id: uuid.UUID
+    score: float
     last_updated: datetime
     date_created: datetime
     company_id: uuid.UUID
@@ -66,4 +67,3 @@ class BeersPublicWithRelations(BeersPublic):
 class BeersUpdate(BeersBase):
     name: str | None = None
     company: str | None = None
-    score: int | None = None

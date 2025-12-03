@@ -83,7 +83,7 @@ async def read_breweries(
         .options(selectinload(Breweries.beers))
     )
 
-    oderby_function(stmt, Breweries, orderby, order)
+    stmt = oderby_function(stmt, Breweries, orderby, order)
 
     breweries = await session.exec(stmt)
     return breweries.all()

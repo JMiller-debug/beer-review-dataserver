@@ -42,13 +42,15 @@ def oderby_function(stmt, model, orderby, order):
     """
     Docstring for oderby_function
 
-    :param stmt: The select statement that we will be modifying (pass by reference therefore no return)
+    :param stmt: The select statement that we will be modifying
     :param model: The sql model that we are using to get the column name from
     :param orderby: The column to sort the data by
     :param order: Whether ascending or descending
 
     Generic function for ordering/sorting results in ascending/descending order
     based on a give column name
+
+    returns the modified stmt
     """
     if orderby is not None:
         # The following is used to get the function attributes from the
@@ -60,3 +62,4 @@ def oderby_function(stmt, model, orderby, order):
         if order is None:
             raise NO_VALID_ORDER
         stmt = stmt.order_by(order())
+    return stmt

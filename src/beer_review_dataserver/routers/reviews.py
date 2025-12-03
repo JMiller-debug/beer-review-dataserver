@@ -4,7 +4,6 @@ from fastapi import APIRouter, Query
 from fastapi.exceptions import HTTPException
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
-
 from beer_review_dataserver.dependencies import SessionDep
 
 # The following import is necessary to rebuild the model
@@ -17,7 +16,6 @@ from beer_review_dataserver.models.reviews import (
     ReviewsPublicWithBeers,
     ReviewsUpdate,
 )
-
 from .common import BEER_NOT_FOUND, REVIEW_NOT_FOUND, oderby_function, patch_record
 
 ReviewsPublicWithBeers.model_rebuild()
@@ -35,27 +33,47 @@ router = APIRouter(
 @router.post("/", response_model=ReviewsPublic)
 async def create_review(review: ReviewsBase, session: SessionDep):
     # First check to see if the beer exists in the database
-    find_beer = select(Beers).where(Beers.name == review.beer_name)
+    find_beer = (
+        select(Beers)
+        .where(Beers.name == review.beer_name)
+        .options(selectinload(Beers.reviews))
+    )
     result = await session.exec(find_beer)
     beer = result.first()
     # Raise a BEER NOT FOUND exception
     if not beer:
         raise BEER_NOT_FOUND
+
     # Next check to see if the user as already reviewed this beer and prevent
     # them from creating duplicate reviews
-    check_duplicate_reviews = select(Reviews).where(Reviews.username == review.username)
-    result = await session.exec(check_duplicate_reviews)
-    duplicate_review = result.first()
-    if duplicate_review:
+    check_duplicate_reviews = (
+        select(Reviews)
+        .where(
+            Reviews.username == review.username, Reviews.beer_name == review.beer_name
+        )
+        .options(selectinload(Reviews.beer))
+    )
+    duplicate_review = await session.exec(check_duplicate_reviews)
+
+    if duplicate_review.first() is not None:
         raise HTTPException(
             status_code=403, detail="User is attempting to create multiple reviews"
         )
+    num_reviews = len(beer.reviews)
+    avg_score = beer.score
+
+    # calculate the new score by updating the average
+    new_score = (avg_score * num_reviews + review.score) / (num_reviews + 1)
     review_data = review.model_dump()
     review_data["beer_id"] = beer.id
     review_db = Reviews.model_validate(review_data)
     session.add(review_db)
     await session.commit()
     await session.refresh(review_db)
+
+    await patch_record(
+        beer, data=Beers(score=new_score), session=session, exception=BEER_NOT_FOUND
+    )
     return review_db
 
 
@@ -90,7 +108,7 @@ async def read_reviews(
     stmt = (
         select(Reviews).offset(offset).limit(limit).options(selectinload(Reviews.beer))
     )
-    oderby_function(stmt, Reviews, orderby, order)
+    stmt = oderby_function(stmt, Reviews, orderby, order)
     reviews = await session.exec(stmt)
     return reviews.all()
 
@@ -121,18 +139,6 @@ async def read_review_by_review_id(review_id: str, session: SessionDep):
     if not review:
         raise REVIEW_NOT_FOUND
     return review
-
-
-@router.delete("/by-name/{review_name}")
-async def delete_review_by_name(review_name: str, session: SessionDep):
-    review = (
-        await session.exec(select(Reviews).where(Reviews.name == review_name))
-    ).first()
-    if not review:
-        raise REVIEW_NOT_FOUND
-    await session.delete(review)
-    await session.commit()
-    return {"Ok": True}
 
 
 @router.delete("/by-id/{review_id}")

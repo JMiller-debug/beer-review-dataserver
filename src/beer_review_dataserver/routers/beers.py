@@ -9,6 +9,7 @@ from beer_review_dataserver.models.beers import (
     Beers,
     BeersBase,
     BeersPublic,
+    BeersPublicWithBrewery,
     BeersPublicWithRelations,
     BeersUpdate,
 )
@@ -24,6 +25,8 @@ from beer_review_dataserver.models.reviews import Reviews, ReviewsPublic  # noqa
 from .common import BEER_NOT_FOUND, BREWERY_NOT_FOUND, oderby_function, patch_record
 
 BeersPublicWithRelations.model_rebuild()
+BeersPublicWithBrewery.model_rebuild()
+
 
 router = APIRouter(
     prefix="/beers",
@@ -84,7 +87,8 @@ async def read_beers(
         stmt = stmt.where(Beers.name == beer_name)
     if beer_id:
         stmt = stmt.where(Beers.id == beer_id)
-    oderby_function(stmt, Beers, orderby, order)
+    print(f"{orderby=}, {order=}")
+    stmt = oderby_function(stmt, Beers, orderby, order)
 
     beers = await session.exec(stmt)
     return beers.all()
@@ -99,7 +103,7 @@ async def list_beers(
     order: Literal["asc", "desc"] = "asc",
 ):
     stmt = select(Beers.name).offset(offset).limit(limit)
-    oderby_function(stmt, Beers, orderby, order)
+    stmt = oderby_function(stmt, Beers, orderby, order)
 
     beers = (await session.exec(stmt)).all()
     return beers
