@@ -22,7 +22,15 @@ from beer_review_dataserver.models.breweries import (  # noqa: F401
 )
 from beer_review_dataserver.models.reviews import Reviews, ReviewsPublic  # noqa: F401
 
-from .common import BEER_NOT_FOUND, BREWERY_NOT_FOUND, oderby_function, patch_record
+from .common import (
+    BEER_NOT_FOUND,
+    BREWERY_NOT_FOUND,
+    NO_DELETE_ID,
+    NO_PATCH_ID,
+    fetch_single_record,
+    oderby_function,
+    patch_record,
+)
 
 BeersPublicWithRelations.model_rebuild()
 BeersPublicWithBrewery.model_rebuild()
@@ -51,23 +59,22 @@ async def create_beer(beer: BeersBase, session: SessionDep) -> BeersPublic:
     return beer_db
 
 
-@router.patch("/by-id/{beer_id}", response_model=BeersPublic)
-async def update_beer_by_id(beer_id: str, beer: BeersUpdate, session: SessionDep):
-    beer_db = await session.get(Beers, beer_id)
-    return await patch_record(beer_db, beer, session, BEER_NOT_FOUND)
-
-
-@router.patch("/by-name/{beer_name}", response_model=BeersPublic)
-async def update_beer_by_name(beer_name: str, beer: BeersUpdate, session: SessionDep):
-    beer_db = (await session.exec(select(Beers).where(Beers.name == beer_name))).first()
+@router.patch("/", response_model=BeersPublic)
+async def update_beer(
+    session: SessionDep,
+    beer: BeersUpdate,
+    name: str | None = None,
+    identifier: str | None = None,
+):
+    beer_db = await fetch_single_record(session, Beers, NO_PATCH_ID, name, identifier)
     return await patch_record(beer_db, beer, session, BEER_NOT_FOUND)
 
 
 @router.get("/", response_model=list[BeersPublicWithRelations])
 async def read_beers(
     session: SessionDep,
-    beer_name: str | None = None,
-    beer_id: str | None = None,
+    name: str | None = None,
+    identifier: str | None = None,
     offset: int = 0,
     limit: Annotated[int, Query(le=100)] = 100,
     orderby: str | None = None,
@@ -83,11 +90,10 @@ async def read_beers(
         .options(selectinload(Beers.brewery))
         .options(selectinload(Beers.reviews))
     )
-    if beer_name:
-        stmt = stmt.where(Beers.name == beer_name)
-    if beer_id:
-        stmt = stmt.where(Beers.id == beer_id)
-    print(f"{orderby=}, {order=}")
+    if name:
+        stmt = stmt.where(Beers.name == name)
+    if identifier:
+        stmt = stmt.where(Beers.id == identifier)
     stmt = oderby_function(stmt, Beers, orderby, order)
 
     beers = await session.exec(stmt)
@@ -109,39 +115,18 @@ async def list_beers(
     return beers
 
 
-@router.get("/by-name/{beer_name}", response_model=BeersPublicWithRelations)
-async def read_beer_by_name(beer_name: str, session: SessionDep):
-    # Can use first here because the list should only be 1 long as the name is a
-    # unique column
-    beer = (await session.exec(select(Beers).where(Beers.name == beer_name))).first()
-    if not beer:
+@router.delete("/")
+async def delete_beer(
+    session: SessionDep,
+    name: str | None = None,
+    identifier: str | None = None,
+):
+    # Query for the beer by whether they pass the name or the id as a query parameter
+    beer_db = await fetch_single_record(session, Beers, NO_DELETE_ID, name, identifier)
+
+    if not beer_db:
         raise BEER_NOT_FOUND
-    return beer
 
-
-@router.get("/by-id/{beer_id}", response_model=BeersPublicWithRelations)
-async def read_beer_by_id(beer_id: str, session: SessionDep):
-    beer = await session.get(Beers, beer_id)
-    if not beer:
-        raise BEER_NOT_FOUND
-    return beer
-
-
-@router.delete("/by-name/{beer_name}")
-async def delete_beer_by_name(beer_name: str, session: SessionDep):
-    beer = (await session.exec(select(Beers).where(Beers.name == beer_name))).first()
-    if not beer:
-        raise BEER_NOT_FOUND
-    await session.delete(beer)
-    await session.commit()
-    return {"Ok": True}
-
-
-@router.delete("/by-id/{beer_id}")
-async def delete_beer_by_id(beer_id: str, session: SessionDep):
-    beers = await session.get(Beers, beer_id)
-    if not beers:
-        raise BEER_NOT_FOUND
-    await session.delete(beers)
+    await session.delete(beer_db)
     await session.commit()
     return {"Ok": True}

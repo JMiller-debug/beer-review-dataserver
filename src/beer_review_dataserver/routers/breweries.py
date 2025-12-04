@@ -17,7 +17,14 @@ from beer_review_dataserver.models.breweries import (
     BreweriesUpdate,
 )
 
-from .common import patch_record, BREWERY_NOT_FOUND, oderby_function
+from .common import (
+    BREWERY_NOT_FOUND,
+    NO_DELETE_ID,
+    NO_PATCH_ID,
+    fetch_single_record,
+    oderby_function,
+    patch_record,
+)
 
 BreweriesPublicWithBeers.model_rebuild()
 
@@ -26,6 +33,20 @@ router = APIRouter(
     tags=["breweries"],
     responses={404: {"Description": "Not Found"}},
 )
+
+
+@router.patch("/", response_model=BreweriesPublic)
+async def update_brewery(
+    session: SessionDep,
+    brewery: BreweriesUpdate,
+    name: str | None = None,
+    identifier: str | None = None,
+):
+    breweries_db = await fetch_single_record(
+        session, Breweries, NO_PATCH_ID, name, identifier
+    )
+
+    return await patch_record(breweries_db, brewery, session, BREWERY_NOT_FOUND)
 
 
 @router.post("/", response_model=BreweriesPublic)
@@ -37,37 +58,11 @@ async def create_brewery(brewery: BreweriesBase, session: SessionDep):
     return brewery_db
 
 
-@router.patch("/by-id/{brewery_id}", response_model=BreweriesPublic)
-async def update_brewery_by_id(
-    brewery_id: str, brewery: BreweriesUpdate, session: SessionDep
-):
-    brewery_db = await session.get(Breweries, brewery_id)
-    return await patch_record(
-        brewery_db,
-        brewery,
-        session,
-        BREWERY_NOT_FOUND,
-    )
-
-
-@router.patch("/by-name/{brewery_name}", response_model=BreweriesPublic)
-async def update_brewery_by_name(
-    brewery_name: str, brewery: BreweriesUpdate, session: SessionDep
-):
-    brewery_db = (
-        await session.exec(select(Breweries).where(Breweries.name == brewery_name))
-    ).first()
-    return await patch_record(
-        brewery_db,
-        brewery,
-        session,
-        BREWERY_NOT_FOUND,
-    )
-
-
 @router.get("/", response_model=list[BreweriesPublicWithBeers])
 async def read_breweries(
     session: SessionDep,
+    name: str | None = None,
+    identifier: str | None = None,
     offset: int = 0,
     limit: Annotated[int, Query(le=100)] = 100,
     orderby: str | None = None,
@@ -82,6 +77,10 @@ async def read_breweries(
         .limit(limit)
         .options(selectinload(Breweries.beers))
     )
+    if name:
+        stmt = stmt.where(Breweries.name == name)
+    if identifier:
+        stmt = stmt.where(Breweries.id == identifier)
 
     stmt = oderby_function(stmt, Breweries, orderby, order)
 
@@ -89,43 +88,20 @@ async def read_breweries(
     return breweries.all()
 
 
-@router.get("/by-name/{brewery_name}", response_model=BreweriesPublicWithBeers)
-async def read_brewery_by_name(brewery_name: str, session: SessionDep):
-    # Can use first here because the list should only be 1 long as the name is a
-    # unique column
-    brewery = (
-        await session.exec(select(Breweries).where(Breweries.name == brewery_name))
-    ).first()
-    if not brewery:
+@router.delete("/")
+async def delete_brewery(
+    session: SessionDep,
+    name: str | None = None,
+    identifier: str | None = None,
+):
+    # Query for the brewery by whether they pass the name or the id as a query parameter
+    brewery_db = await fetch_single_record(
+        session, Breweries, NO_DELETE_ID, name, identifier
+    )
+
+    if not brewery_db:
         raise BREWERY_NOT_FOUND
-    return brewery
 
-
-@router.get("/by-id/{brewery_id}", response_model=BreweriesPublicWithBeers)
-async def read_brewery_by_id(brewery_id: str, session: SessionDep):
-    brewery = await session.get(Breweries, brewery_id)
-    if not brewery:
-        raise BREWERY_NOT_FOUND
-    return brewery
-
-
-@router.delete("/by-name/{brewery_name}")
-async def delete_brewery_by_name(brewery_name: str, session: SessionDep):
-    brewery = (
-        await session.exec(select(Breweries).where(Breweries.name == brewery_name))
-    ).first()
-    if not brewery:
-        raise BREWERY_NOT_FOUND
-    await session.delete(brewery)
-    await session.commit()
-    return {"Ok": True}
-
-
-@router.delete("/by-id/{brewery_id}")
-async def delete_brewery_by_id(brewery_id: str, session: SessionDep):
-    breweries = await session.get(Breweries, brewery_id)
-    if not breweries:
-        raise BREWERY_NOT_FOUND
-    await session.delete(breweries)
+    await session.delete(brewery_db)
     await session.commit()
     return {"Ok": True}

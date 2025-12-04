@@ -1,6 +1,9 @@
 import datetime
 
 from fastapi.exceptions import HTTPException
+from sqlmodel import select
+
+from beer_review_dataserver.dependencies import SessionDep
 
 REVIEW_NOT_FOUND = HTTPException(status_code=404, detail="Review not found")
 BREWERY_NOT_FOUND = HTTPException(status_code=404, detail="Brewery not found")
@@ -11,6 +14,14 @@ NO_VALID_ORDER = HTTPException(
 NO_VALID_ORDERBY = HTTPException(
     status_code=400,
     detail="Invalid Orderby: The column you are sorting by does not exist",
+)
+NO_DELETE_ID = HTTPException(
+    status_code=400,
+    detail="Invalid Delete: Not enough information to process delete request",
+)
+NO_PATCH_ID = HTTPException(
+    status_code=400,
+    detail="Invalid Patch: Not enough information to process patch request",
 )
 
 
@@ -63,3 +74,19 @@ def oderby_function(stmt, model, orderby, order):
             raise NO_VALID_ORDER
         stmt = stmt.order_by(order())
     return stmt
+
+
+async def fetch_single_record(
+    session: SessionDep,
+    model,
+    exception: HTTPException,
+    name: str | None = None,
+    identifier: str | None = None,
+):
+    if name:
+        data_db = (await session.exec(select(model).where(model.name == name))).first()
+    elif identifier:
+        data_db = await session.get(model, identifier)
+    else:
+        raise exception
+    return data_db
