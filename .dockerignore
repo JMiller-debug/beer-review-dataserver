@@ -1,1 +1,6 @@
-.venv
+.venv/
+.ruff_cahce/
+beer_review_dataserver.egg-info/
+__pycache__
+.git/
+.gitignore
