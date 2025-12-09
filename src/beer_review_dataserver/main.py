@@ -1,12 +1,12 @@
+from pathlib import Path
+
 import uvicorn
-from fastapi import FastAPI, APIRouter
+from fastapi import APIRouter, FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from beer_review_dataserver.config import get_settings
 from beer_review_dataserver.dependencies import lifespan
 from beer_review_dataserver.routers import beers, breweries, reviews
-import os
-
 
 app = FastAPI(lifespan=lifespan)
 
@@ -15,9 +15,14 @@ app.include_router(beers.router)
 app.include_router(breweries.router)
 app.include_router(reviews.router)
 
+settings = get_settings()
 # Mount the beer images for now to act as a CDN for the website when querying images
-current_dir = os.path.dirname(__file__)
-app.mount("/images", StaticFiles(directory=f"{current_dir}\\images"), name="images")
+if settings.image_dir:
+    image_dir = Path(settings.image_dir)
+else:
+    current_dir = Path(__file__).resolve().parent
+    image_dir = current_dir / "images"
+app.mount("/images", StaticFiles(directory=image_dir), name="images")
 
 # Creting an unimplemented route such that there is documentation on the /docs link
 router = APIRouter(

@@ -15,7 +15,7 @@ dependencies = [
     "alembic>=1.16.5",
     "asyncpg>=0.31.0",
     "fastapi[standard]>=0.123.0",
-    "psycopg2>=2.9.11",
+    "psycopg2-binary>=2.9.11",
     "pydantic-settings>=2.11.0",
     "sqlmodel>=0.0.27",
 ]
@@ -25,6 +25,11 @@ beer_dataserver = "beer_review_dataserver.main:main"
 [project.urls]
 Homepage = "https://github.com/JMiller-debug/beer-review-dataserver"
 Issues = "https://github.com/JMiller-debug/beer-review-dataserver/issues"
+
+[tool.uv]
+package = true
+
+[tool.uv.sources]
 
 
 [dependency-groups]

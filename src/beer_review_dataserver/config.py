@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     postgres_uri: str = (
         "postgresql+asyncpg://postgres:postgres@localhost:5432/beer_review"
     )
+    image_dir: str = ""
 
 
 @lru_cache
