@@ -1,7 +1,8 @@
+import shutil
 from pathlib import Path
 
 import uvicorn
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, UploadFile
 from fastapi.staticfiles import StaticFiles
 
 from beer_review_dataserver.config import get_settings
@@ -9,6 +10,7 @@ from beer_review_dataserver.dependencies import lifespan
 from beer_review_dataserver.routers import beers, breweries, reviews
 
 app = FastAPI(lifespan=lifespan)
+
 
 # Include routes to the endpoints we wish to use
 app.include_router(beers.router)
@@ -22,7 +24,6 @@ if settings.image_dir:
 else:
     current_dir = Path(__file__).resolve().parent
     image_dir = current_dir / "images"
-app.mount("/images", StaticFiles(directory=image_dir), name="images")
 
 # Creting an unimplemented route such that there is documentation on the /docs link
 router = APIRouter(
@@ -33,6 +34,18 @@ router = APIRouter(
         403: {"Description": "Not Authorised"},
     },
 )
+
+
+@router.post("/")
+async def post_image(beer_name: str, file: UploadFile | None = None):
+    if not file:
+        return {"message": "No upload file sent"}
+    file_extension = Path(file.filename).suffix.lower()
+    beer_name = beer_name.replace(" ", "-") + file_extension
+    file_path = image_dir / beer_name
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return {"filename": beer_name}
 
 
 @router.get(
@@ -49,6 +62,9 @@ async def serve_images():
 
 
 app.include_router(router)
+
+# Need to mount after the router otherwise we can't post to this route
+app.mount("/images", StaticFiles(directory=image_dir), name="images")
 
 
 def main():
