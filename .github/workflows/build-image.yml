@@ -1,1 +1,41 @@
+name: Build Python Image
+run-name: ${{ github.actor }} Building Python Image
+on: [push]
+jobs:
+  Build-Python-Image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v5
+      - name: Build Docker Image
+        run: docker build --file Dockerfile -t beer-dataserver:latest .
 
+      - name: Save Docker image
+        run: docker save --output beer_dataserver.tar beer-dataserver:latest
+
+      - name: Upload Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-image
+          path: beer_dataserver.tar
+          retention-days: 1
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install the project
+        run: uv sync --only-dev
+
+      - name: Run ruff
+        run: uv run ruff check
+
+      - name: Run ty
+        run: uv run ty check
