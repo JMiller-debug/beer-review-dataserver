@@ -8,10 +8,10 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v5
       - name: Build Docker Image
-        run: docker build --file Dockerfile -t beer-dataserver:$(date +%s) .
+        run: docker build --file Dockerfile -t beer-dataserver:latest .
 
       - name: Save Docker image
-        run: docker save --output beer_dataserver.tar beer-dataserver:$(date +%s)
+        run: docker save --output beer_dataserver.tar beer-dataserver:latest
 
       - name: Upload Docker image
         uses: actions/upload-artifact@v4
