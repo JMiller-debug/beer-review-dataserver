@@ -1,5 +1,5 @@
 name: Build Python Image
-run-name: ${{ gitbug.actor }} Building Python Image
+run-name: ${{ github.actor }} Building Python Image
 on: [push]
 jobs:
   Build Python Image:
