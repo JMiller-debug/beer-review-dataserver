@@ -1,1 +1,12 @@
-
+name: Build Python Image
+run-name: ${{ gitbug.actor }} Building Python Image
+on: [push]
+jobs:
+  Build Python Image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v5
+      - name: List files in the repository
+        run: |
+          ls ${{ github.workspace }}
