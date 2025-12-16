@@ -30,8 +30,9 @@ jobs:
 
       - name: Set up Python
         run: uv python install
-      - name: Install Ruff
-        run: uv pip install ruff --system
+        
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
 
-      - name: Run Ruff
-        run: ruff check
+      - name: Run ruff
+        run: uv run ruff check
