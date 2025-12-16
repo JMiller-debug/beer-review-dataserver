@@ -1,3 +1,7 @@
+"""Beer Dataserver Main function."""
+
+from __future__ import annotations
+
 import shutil
 from pathlib import Path
 
@@ -8,6 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from beer_review_dataserver.config import get_settings
 from beer_review_dataserver.dependencies import lifespan
 from beer_review_dataserver.routers import beers, breweries, reviews
+from beer_review_dataserver.routers.common import NO_VALID_FILE
+from beer_review_dataserver.routers.types import CreateFileResponse
 
 app = FastAPI(lifespan=lifespan)
 
@@ -37,28 +43,37 @@ router = APIRouter(
 
 
 @router.post("/")
-async def post_image(beer_name: str, file: UploadFile | None = None):
+async def post_image(
+    beer_name: str, file: UploadFile | None = None
+) -> CreateFileResponse:
+    """Post Image to the CDN (Filesystem)."""
     if not file:
-        return {"message": "No upload file sent"}
-    file_extension = Path(file.filename).suffix.lower()
-    beer_name = beer_name.replace(" ", "-") + file_extension
-    file_path = image_dir / beer_name
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    return {"filename": beer_name}
+        raise NO_VALID_FILE
+    if file.filename is not None:
+        file_extension = Path(file.filename).suffix.lower()
+        beer_name = beer_name.replace(" ", "-") + file_extension
+        file_path = image_dir / beer_name
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        return CreateFileResponse(filename=beer_name)
+    raise NO_VALID_FILE
 
 
 @router.get(
     "/",
     summary="Image Directory",
-    description="Serves static beer pictures. Any beer image file can be accessed via /images/{filename}.",
+    description=(
+        "Serves static beer pictures. Any beer image file can be accessed via "
+        "/images/{filename}."
+    ),
 )
-async def serve_images():
+async def serve_images() -> None:
     """
-    This endpoint serves static image files.
+    Serve static image files.
+
     Example: /images/photo.jpg
     """
-    pass  # This won't be called due to StaticFiles handling the path
+    # This won't be called due to StaticFiles handling the path
 
 
 app.include_router(router)
@@ -67,7 +82,8 @@ app.include_router(router)
 app.mount("/images", StaticFiles(directory=image_dir), name="images")
 
 
-def main():
+def main() -> None:
+    """Start the dataserver."""
     settings = get_settings()
     uvicorn.run(
         "beer_review_dataserver.main:app",

@@ -6,7 +6,7 @@ authors = [
 ]
 description = "A dataserver for the beer review website"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -17,11 +17,13 @@ dependencies = [
     "fastapi[standard]>=0.123.0",
     "psycopg2-binary>=2.9.11",
     "pydantic-settings>=2.11.0",
+    "sqlalchemy[asyncio]>=2.0.44",
     "sqlmodel>=0.0.27",
 ]
 
 [project.scripts]
 beer_dataserver = "beer_review_dataserver.main:main"
+
 [project.urls]
 Homepage = "https://github.com/JMiller-debug/beer-review-dataserver"
 Issues = "https://github.com/JMiller-debug/beer-review-dataserver/issues"
@@ -29,12 +31,15 @@ Issues = "https://github.com/JMiller-debug/beer-review-dataserver/issues"
 [tool.uv]
 package = true
 
-[tool.uv.sources]
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["T201", "D203", "D212", "COM812"]
 
 
 [dependency-groups]
 dev = [
     "ruff>=0.14.7",
+    "ty>=0.0.1a34",
 ]
 
 [tool.ruff]

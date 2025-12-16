@@ -1,7 +1,9 @@
+"""Beers Database models."""
+
+# ruff: noqa:  UP045
 import uuid
 from copy import deepcopy
-from datetime import datetime, timezone
-from functools import partial
+from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
@@ -15,15 +17,16 @@ if TYPE_CHECKING:
     from .reviews import Reviews, ReviewsPublic
 
 
-now_func = partial(datetime.now, timezone.utc)
-
-
 class BeersBase(SQLModel):
+    """Base object for the beers model."""
+
     name: str = Field(index=True, unique=True)
     company: str = Field(index=True, foreign_key="breweries.name")
 
 
 class Beers(BeersBase, table=True):
+    """Beers object with columns that get generated."""
+
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     last_updated: datetime = deepcopy(LAST_UPDATED)
     date_created: datetime = deepcopy(DATE_CREATED)
@@ -48,6 +51,8 @@ class Beers(BeersBase, table=True):
 
 
 class BeersPublic(BeersBase):
+    """Public return object for beers."""
+
     id: uuid.UUID
     score: float
     last_updated: datetime
@@ -56,14 +61,20 @@ class BeersPublic(BeersBase):
 
 
 class BeersPublicWithBrewery(BeersPublic):
+    """Public return object for beers with brewery relation."""
+
     brewery: "BreweriesPublic"
 
 
 class BeersPublicWithRelations(BeersPublic):
+    """Public return object for beers with brewery and review relation."""
+
     brewery: "BreweriesPublic"
     reviews: Optional[list["ReviewsPublic"]]
 
 
-class BeersUpdate(BeersBase):
+class BeersUpdate(SQLModel):
+    """Update model for the beers object."""
+
     name: str | None = None
     company: str | None = None

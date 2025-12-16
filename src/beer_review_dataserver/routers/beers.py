@@ -1,10 +1,14 @@
-from typing import Annotated, Literal
+"""Beers dataserver routes."""
 
-from fastapi import APIRouter, Query
+from __future__ import annotations
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 
-from beer_review_dataserver.dependencies import SessionDep
+from beer_review_dataserver.dependencies import SessionDep  # noqa: TC001
 from beer_review_dataserver.models.beers import (
     Beers,
     BeersBase,
@@ -31,6 +35,7 @@ from .common import (
     oderby_function,
     patch_record,
 )
+from .types import CommonOptions, DeleteResponse, QueryOptions
 
 BeersPublicWithRelations.model_rebuild()
 BeersPublicWithBrewery.model_rebuild()
@@ -43,90 +48,90 @@ router = APIRouter(
 )
 
 
-@router.post("/", response_model=BeersPublic)
+@router.post("/")
 async def create_beer(beer: BeersBase, session: SessionDep) -> BeersPublic:
+    """Create a beer from user input and insert into the database."""
     stmt = select(Breweries).where(Breweries.name == beer.company)
     result = await session.exec(stmt)
     if not result:
         raise BREWERY_NOT_FOUND
     brewery = result.first()
     beer_data = beer.model_dump()
-    beer_data["company_id"] = brewery.id
+    brewery_id = getattr(brewery, "id", None)
+    if brewery_id is None:
+        raise BREWERY_NOT_FOUND
+    beer_data["company_id"] = brewery_id
     beer_db = Beers.model_validate(beer_data)
     session.add(beer_db)
     await session.commit()
     await session.refresh(beer_db)
-    return beer_db
+    return BeersPublic.model_validate(beer_db)
 
 
-@router.patch("/", response_model=BeersPublic)
+@router.patch("/")
 async def update_beer(
     session: SessionDep,
     beer: BeersUpdate,
-    name: str | None = None,
-    identifier: str | None = None,
-):
-    beer_db = await fetch_single_record(session, Beers, NO_PATCH_ID, name, identifier)
+    options: Annotated[CommonOptions, Depends()],
+) -> BeersPublic:
+    """Patch a beer from user input and update the database."""
+    beer_db = await fetch_single_record(session, Beers, NO_PATCH_ID, options)
     return await patch_record(beer_db, beer, session, BEER_NOT_FOUND)
 
 
-@router.get("/", response_model=list[BeersPublicWithRelations])
+@router.get(
+    "/",
+)
 async def read_beers(
     session: SessionDep,
-    name: str | None = None,
-    identifier: str | None = None,
-    offset: int = 0,
-    limit: Annotated[int, Query(le=100)] = 100,
-    orderby: str | None = None,
-    order: Literal["asc", "desc"] = "asc",
-):
+    options: Annotated[CommonOptions, Depends()],
+    query: Annotated[QueryOptions, Depends()],
+) -> list[BeersPublicWithRelations]:
+    """Return beers matching query parameters."""
     # Note selectinload is used to get the associated content from the other
     # tables. This provides us with a company from just the fk of company name
     # and also a list of reviews associated with our beer
     stmt = (
         select(Beers)
-        .offset(offset)
-        .limit(limit)
-        .options(selectinload(Beers.brewery))
-        .options(selectinload(Beers.reviews))
+        .offset(query.offset)
+        .limit(query.limit)
+        .options(selectinload(Beers.brewery))  # ty: ignore[invalid-argument-type]
+        .options(selectinload(Beers.reviews))  # ty: ignore[invalid-argument-type]
     )
-    if name:
-        stmt = stmt.where(Beers.name == name)
-    if identifier:
-        stmt = stmt.where(Beers.id == identifier)
-    stmt = oderby_function(stmt, Beers, orderby, order)
+    if options.name:
+        stmt = stmt.where(Beers.name == options.name)
+    if options.identifier:
+        stmt = stmt.where(Beers.id == options.identifier)
+    stmt = oderby_function(stmt, Beers, query.orderby, query.order)
 
     beers = await session.exec(stmt)
-    return beers.all()
+    return beers.all()  # ty: ignore[invalid-return-type]
 
 
-@router.get("/list-beers", response_model=list[str])
+@router.get("/list-beers")
 async def list_beers(
     session: SessionDep,
-    offset: int = 0,
-    limit: Annotated[int, Query(le=100)] = 100,
-    orderby: str | None = None,
-    order: Literal["asc", "desc"] = "asc",
-):
-    stmt = select(Beers.name).offset(offset).limit(limit)
-    stmt = oderby_function(stmt, Beers, orderby, order)
+    query: Annotated[QueryOptions, Query()],
+) -> list[str]:
+    """Return a list of beer names from the database."""
+    stmt = select(Beers.name).offset(query.offset).limit(query.limit)
+    stmt = oderby_function(stmt, Beers, query.orderby, query.order)
 
-    beers = (await session.exec(stmt)).all()
-    return beers
+    return (await session.exec(stmt)).all()  # ty: ignore[invalid-return-type]
 
 
 @router.delete("/")
 async def delete_beer(
     session: SessionDep,
-    name: str | None = None,
-    identifier: str | None = None,
-):
+    options: Annotated[CommonOptions, Query()],
+) -> DeleteResponse:
+    """Delete a beer from the database."""
     # Query for the beer by whether they pass the name or the id as a query parameter
-    beer_db = await fetch_single_record(session, Beers, NO_DELETE_ID, name, identifier)
+    beer_db = await fetch_single_record(session, Beers, NO_DELETE_ID, options)
 
     if not beer_db:
         raise BEER_NOT_FOUND
 
     await session.delete(beer_db)
     await session.commit()
-    return {"Ok": True}
+    return DeleteResponse(ok=True)

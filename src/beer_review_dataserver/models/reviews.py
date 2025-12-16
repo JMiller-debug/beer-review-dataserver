@@ -1,7 +1,8 @@
+"""Reviews database models."""
+
 import uuid
 from copy import deepcopy
-from datetime import datetime, timezone
-from functools import partial
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint
@@ -12,10 +13,10 @@ from .common import DATE_CREATED, LAST_UPDATED
 if TYPE_CHECKING:
     from .beers import Beers, BeersPublic
 
-now_func = partial(datetime.now, timezone.utc)
-
 
 class ReviewsBase(SQLModel):
+    """Base object for the Reviews model."""
+
     username: str = Field(index=True, unique=False)
     score: float = Field(index=True)
     comment: str | None = Field(index=True, default=None)
@@ -26,6 +27,8 @@ class ReviewsBase(SQLModel):
 
 
 class Reviews(ReviewsBase, table=True):
+    """Reveiws object with columns that get generated."""
+
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     last_updated: datetime = deepcopy(LAST_UPDATED)
     date_created: datetime = deepcopy(DATE_CREATED)
@@ -38,16 +41,22 @@ class Reviews(ReviewsBase, table=True):
 
 
 class ReviewsPublic(ReviewsBase):
+    """Public return object for Reviews."""
+
     id: uuid.UUID
     last_updated: datetime
     date_created: datetime
     beer_id: uuid.UUID
 
 
-class ReviewsUpdate(ReviewsBase):
-    score: int | None = None
-    comment: str = Field(index=True)
-
-
 class ReviewsPublicWithBeers(ReviewsPublic):
+    """Public return object for reviews with beers relation."""
+
     beer: "BeersPublic"
+
+
+class ReviewsUpdate(SQLModel):
+    """Update model for the reviews object."""
+
+    score: float | None = None
+    comment: str | None = None

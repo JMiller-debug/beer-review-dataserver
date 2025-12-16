@@ -1,10 +1,14 @@
+"""Beer Dataserver config."""
+
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    host: str = "0.0.0.0"
+    """Enviornemnt settings class."""
+
+    host: str = "0.0.0.0"  # noqa: S104
     port: int = 8000
     log_level: str = "info"
     postgres_uri: str = (
@@ -14,5 +18,11 @@ class Settings(BaseSettings):
 
 
 @lru_cache
-def get_settings():
+def get_settings() -> Settings:
+    """
+    Return environment variables.
+
+    Cached so it saves the result the first time
+    its called.
+    """
     return Settings()
