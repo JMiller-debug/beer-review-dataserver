@@ -7,6 +7,15 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v5
-      - name: List files in the repository
-        run: |
-          ls ${{ github.workspace }}
+      - name: Build Docker Image
+        run: docker build . --file Dockerfile-t beer-dataserver:$(date +%s)
+
+      - name: Save Docker image
+        run: docker save --output beer_dataserver.tar beer-dataserver:$(date +%s)
+
+      - name: Upload Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-image
+          path: beer_dataserver.tar
+          retention-days: 1
