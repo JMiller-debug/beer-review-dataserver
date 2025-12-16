@@ -20,7 +20,6 @@ jobs:
           path: beer_dataserver.tar
           retention-days: 1
 
-jobs:
   lint:
     runs-on: ubuntu-latest
     needs: build
